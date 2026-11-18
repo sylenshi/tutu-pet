@@ -137,14 +137,8 @@ tutu-pet/
 │       └── build.yml    # GitHub Actions：打 tag 自动构建三平台产物
 └── assets/
     ├── transparent/     # 抠图后透明版（程序使用）
-    ├── frames/          # 原始立绘（白底）
-    ├── raw/             # 参考照片素材
     ├── tray/            # macOS 托盘 template 图标
-    ├── readme/          # README 展示图（图标 + 横版形态拼图）
-    └── archive/         # 历史版本归档
-        ├── v1_q_version/
-        ├── v2_realistic_tall/
-        └── v3_chibi_stand/
+    └── readme/          # README 展示图（图标 + 横版形态拼图）
 ```
 
 ## 🛠️ 打包发布

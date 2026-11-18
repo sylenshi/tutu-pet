@@ -27,7 +27,6 @@
       "icon.ico",
       "icon.png",
       "assets/transparent/**",
-      "assets/frames/**",
       "assets/tray/**"
     ],
     "win": {
