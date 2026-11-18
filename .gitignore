@@ -1,0 +1,27 @@
+# 依赖
+node_modules/
+
+# 打包产物（exe 在本地构建生成，体积大不入库）
+dist/
+
+# 运行时生成的用户配置（实际位置：%APPDATA%\兔兔\config.json）
+config.json
+
+# 调试输出
+debug_window.png
+debug_bounds.txt
+
+# 日志
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# 系统垃圾文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
