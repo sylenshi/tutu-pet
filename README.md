@@ -5,10 +5,10 @@
 # 兔兔 (Tutu Pet) 🐰
 
 ![Electron](https://img.shields.io/badge/Electron-33.x-47848F?logo=electron&logoColor=white)
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-6E7376?logo=github&logoColor=white)
 ![Version](https://img.shields.io/badge/version-1.0.0-8A63D2)
 
-一个可爱的 Windows 2D 卡通桌宠。她会坐在你的桌面上，陪你工作、卖萌、说话，还藏着一个**摇一摇才能解锁的隐藏款**等你发现。
+一个可爱的**跨平台** 2D 卡通桌宠（Windows / macOS / Linux）。她会坐在你的桌面上，陪你工作、卖萌、说话，还藏着一个**摇一摇才能解锁的隐藏款**等你发现。
 
 <div align="center">
   <img src="assets/readme/pet-strip.png" alt="形态展示：待机 · 开心 · 挥手 · 害羞 · 睡觉 · 惊讶 · 隐藏款" width="720">
@@ -44,12 +44,22 @@
 
 ## 🚀 快速开始
 
-### 方式一：打包版 exe（推荐）
+### 方式一：下载打包版（推荐）
 
-双击 `dist/兔兔.exe` 即可运行，免安装、免依赖。
+前往 [Releases](https://github.com/sylenshi/tutu-pet/releases/latest) 下载对应平台的安装包：
 
-- 首次运行 Windows SmartScreen 可能提示未知发布者，点"更多信息 → 仍要运行"即可
-- 所有配置自动保存在用户目录，换机器/重解压不丢失
+| 平台 | 文件 | 说明 |
+|------|------|------|
+| Windows 10/11 | `兔兔.exe` | 单文件便携版，免安装、免依赖 |
+| macOS（Apple Silicon） | `兔兔-1.0.0-arm64.dmg` | M1/M2/M3/M4 芯片 |
+| macOS（Intel） | `兔兔-1.0.0-x64.dmg` | 英特尔芯片 |
+| Linux | `兔兔-1.0.0-x86_64.AppImage` | `chmod +x` 后直接运行 |
+
+- Windows 首次运行 SmartScreen 可能提示未知发布者，点「更多信息 → 仍要运行」即可
+- macOS 首次打开需「右键 → 打开」绕过 Gatekeeper（CI 产物未签名公证，见下文说明）
+- 所有配置自动保存在用户目录，换机器/重装不丢失
+
+本地 `npm run dist` 打出来的便携版在 `dist/兔兔.exe`，用法与 Releases 里的 Windows 包一致。
 
 ### 方式二：源码运行（需 Node.js）
 
@@ -58,11 +68,17 @@ npm install
 npm start
 ```
 
-或直接双击 `启动桌宠.bat`。
+或直接双击 `启动桌宠.bat`（仅 Windows 的快捷方式）。
 
 ## ⚙️ 配置说明
 
-配置在 `%APPDATA%\兔兔\config.json`（打包版与源码版共用，自动生成）：
+配置由 Electron 自动定位（打包版与源码版共用，自动生成）：
+
+| 平台 | 路径 |
+|------|------|
+| Windows | `%APPDATA%\兔兔\config.json` |
+| macOS | `~/Library/Application Support/兔兔/config.json` |
+| Linux | `~/.config/兔兔/config.json` |
 
 | 字段 | 说明 |
 |------|------|
@@ -114,7 +130,7 @@ tutu-pet/
 ├── renderer.js          # 渲染逻辑：形态轮换/拖拽/摇一摇/定时冒泡
 ├── index.html           # 界面布局（气泡区+角色区）
 ├── bubble.json          # 气泡台词配置
-├── 启动桌宠.bat          # 源码运行快捷方式
+├── 启动桌宠.bat          # 源码运行快捷方式（仅 Windows）
 ├── icon.ico / icon.png  # 应用图标（托盘也用它）
 ├── .github/
 │   └── workflows/
@@ -141,7 +157,7 @@ npm run dist:mac    # macOS dmg + zip（需在 Mac 上执行）
 npm run dist:all    # 三平台全量（需在 Mac 上执行）
 ```
 
-产物在 `dist/` 目录：Windows 为 `兔兔.exe`（单文件便携版，约 80MB）；macOS 为 `兔兔-1.0.0-x64.dmg` / `兔兔-1.0.0-arm64.dmg`；Linux 为 `兔兔-1.0.0-x64.AppImage`。
+产物在 `dist/` 目录：Windows 为 `兔兔.exe`（单文件便携版，约 80MB）；macOS 为 `兔兔-1.0.0-x64.dmg` / `兔兔-1.0.0-arm64.dmg`；Linux 为 `兔兔-1.0.0-x86_64.AppImage`。
 
 > Windows 电脑无法直接构建 macOS 包（electron-builder 官方限制：mac 打包依赖 macOS 系统工具）。
 
@@ -155,7 +171,7 @@ git push origin v1.0.0
 ```
 
 - `windows-latest` 打便携版 exe，`macos-latest` 打 dmg/zip（x64 + arm64），`ubuntu-latest` 打 AppImage
-- 产物在 Actions 运行页面直接下载；**打 tag 时会自动生成 Release 草稿**并附上全部产物
+- 产物在 Actions 运行页面直接下载；**打 tag 时会自动生成 Release 草稿**（附全部 6 个产物），去 Releases 页面核对后点 **Publish** 即对公网可见
 - 也可以在 Actions 页面选 "Build" → "Run workflow" 随时手动构建
 
 > ⚠️ CI 构建的 mac 包**未签名、未公证**，其他 Mac 首次打开需「右键 → 打开」绕过 Gatekeeper；正式分发需要 Apple Developer 账号做签名公证（拿到证书后可在 workflow 里配置 Secrets）。
