@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Menu, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -134,12 +134,22 @@ function toggleAutoBubble() {
   refreshTrayMenu();
 }
 
+// ===== 托盘图标：macOS 菜单栏用小尺寸 template 图（系统自动处理黑白/选中态），Windows 用应用图标 =====
+function createTrayIcon() {
+  if (process.platform === 'darwin') {
+    const img = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', 'trayTemplate.png'));
+    img.setTemplateImage(true);
+    return img;
+  }
+  return path.join(__dirname, 'icon.png');
+}
+
 app.whenReady().then(() => {
   createWindow();
 
   // 系统托盘
   try {
-    tray = new Tray(path.join(__dirname, 'icon.png'));
+    tray = new Tray(createTrayIcon());
     tray.setToolTip('兔兔桌宠');
     refreshTrayMenu();
     tray.on('double-click', () => togglePet());

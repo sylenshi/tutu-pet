@@ -116,10 +116,14 @@ tutu-pet/
 ├── bubble.json          # 气泡台词配置
 ├── 启动桌宠.bat          # 源码运行快捷方式
 ├── icon.ico / icon.png  # 应用图标（托盘也用它）
+├── .github/
+│   └── workflows/
+│       └── build.yml    # GitHub Actions：打 tag 自动构建三平台产物
 └── assets/
     ├── transparent/     # 抠图后透明版（程序使用）
     ├── frames/          # 原始立绘（白底）
     ├── raw/             # 参考照片素材
+    ├── tray/            # macOS 托盘 template 图标
     ├── readme/          # README 展示图（图标 + 横版形态拼图）
     └── archive/         # 历史版本归档
         ├── v1_q_version/
@@ -129,13 +133,32 @@ tutu-pet/
 
 ## 🛠️ 打包发布
 
+### 本地构建
+
 ```bash
-npm run dist
-# 或
-npx electron-builder --win portable
+npm run dist        # Windows 便携版（本机即可）
+npm run dist:mac    # macOS dmg + zip（需在 Mac 上执行）
+npm run dist:all    # 三平台全量（需在 Mac 上执行）
 ```
 
-产物为 `dist/兔兔.exe`（单文件便携版，约 80MB）。
+产物在 `dist/` 目录：Windows 为 `兔兔.exe`（单文件便携版，约 80MB）；macOS 为 `兔兔-1.0.0-x64.dmg` / `兔兔-1.0.0-arm64.dmg`；Linux 为 `兔兔-1.0.0-x64.AppImage`。
+
+> Windows 电脑无法直接构建 macOS 包（electron-builder 官方限制：mac 打包依赖 macOS 系统工具）。
+
+### GitHub Actions 自动构建（推荐）
+
+仓库已内置 `.github/workflows/build.yml`，推送 tag 或手动触发即可在云端构建全平台产物，自己电脑不用动：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+- `windows-latest` 打便携版 exe，`macos-latest` 打 dmg/zip（x64 + arm64），`ubuntu-latest` 打 AppImage
+- 产物在 Actions 运行页面直接下载；**打 tag 时会自动生成 Release 草稿**并附上全部产物
+- 也可以在 Actions 页面选 "Build" → "Run workflow" 随时手动构建
+
+> ⚠️ CI 构建的 mac 包**未签名、未公证**，其他 Mac 首次打开需「右键 → 打开」绕过 Gatekeeper；正式分发需要 Apple Developer 账号做签名公证（拿到证书后可在 workflow 里配置 Secrets）。
 
 ## 🐛 常见问题
 

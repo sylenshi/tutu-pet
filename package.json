@@ -6,7 +6,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win portable"
+    "dist": "electron-builder --win portable",
+    "dist:mac": "electron-builder --mac --x64 --arm64",
+    "dist:all": "electron-builder -mwl"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -25,7 +27,8 @@
       "icon.ico",
       "icon.png",
       "assets/transparent/**",
-      "assets/frames/**"
+      "assets/frames/**",
+      "assets/tray/**"
     ],
     "win": {
       "target": [
@@ -39,6 +42,22 @@
     "portable": {
       "artifactName": "兔兔.exe",
       "unpackDirName": "tutu-pet"
+    },
+    "mac": {
+      "icon": "icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.lifestyle",
+      "artifactName": "兔兔-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility",
+      "artifactName": "兔兔-${version}-${arch}.${ext}"
     },
     "electronDownload": {
       "mirror": "https://npmmirror.com/mirrors/electron/"
