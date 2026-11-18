@@ -52,9 +52,9 @@
 | 平台 | 文件 | 说明 |
 |------|------|------|
 | Windows 10/11 | `兔兔.exe` | 单文件便携版，免安装、免依赖 |
-| macOS（Apple Silicon） | `兔兔-1.0.0-arm64.dmg` | M1/M2/M3/M4 芯片 |
-| macOS（Intel） | `兔兔-1.0.0-x64.dmg` | 英特尔芯片 |
-| Linux | `兔兔-1.0.0-x86_64.AppImage` | `chmod +x` 后直接运行 |
+| macOS（Apple Silicon） | `兔兔-1.0.1-arm64.dmg` | M1/M2/M3/M4 芯片 |
+| macOS（Intel） | `兔兔-1.0.1-x64.dmg` | 英特尔芯片 |
+| Linux | `兔兔-1.0.1-x86_64.AppImage` | `chmod +x` 后直接运行 |
 
 - Windows 首次运行 SmartScreen 可能提示未知发布者，点「更多信息 → 仍要运行」即可
 - macOS 首次打开需「右键 → 打开」绕过 Gatekeeper（CI 产物未签名公证，见下文说明）

@@ -1,7 +1,7 @@
 {
   "name": "tutu-pet",
   "productName": "兔兔",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "兔兔 - 可爱的2D卡通桌宠",
   "main": "main.js",
   "scripts": {
