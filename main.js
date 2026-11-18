@@ -10,7 +10,8 @@ function loadConfig() {
   try {
     return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   } catch (e) {
-    return { width: 200, height: 280, x: null, y: null, autoBubble: true };
+    // 尺寸不持久化：每次启动固定中档，只记住位置和冒泡开关
+    return { x: null, y: null, autoBubble: true };
   }
 }
 
@@ -30,12 +31,18 @@ let cfg = loadConfig();
 
 function createWindow() {
   const display = screen.getPrimaryDisplay();
-  const { width: sw, height: sh } = display.workAreaSize;
+  // 保存的位置可能落在缩放比例不同的副屏上（如主屏 100% + 副屏 150%），
+  // 尺寸必须按窗口实际所在屏幕的缩放换算，否则启动会比托盘预设大一圈
+  const hasPos = cfg.x !== undefined && cfg.x !== null && cfg.y !== undefined && cfg.y !== null;
+  const openDisplay = hasPos ? screen.getDisplayNearestPoint({ x: cfg.x, y: cfg.y }) : display;
+  const wa = openDisplay.workArea;
+  // 尺寸语义是物理像素，按屏幕缩放换算成 DIP（150% 屏上 400 物理像素 = 267 DIP）
+  const startupSize = Math.round(400 / (openDisplay.scaleFactor || 1));
   win = new BrowserWindow({
-    width: cfg.width || 200,
-    height: cfg.height || 280,
-    x: (cfg.x !== undefined && cfg.x !== null) ? cfg.x : 60,
-    y: (cfg.y !== undefined && cfg.y !== null) ? cfg.y : Math.max(0, sh - 240),
+    width: startupSize,
+    height: startupSize,
+    x: hasPos ? cfg.x : wa.x + 60,
+    y: hasPos ? cfg.y : Math.max(wa.y, wa.y + wa.height - startupSize - 40),
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -50,6 +57,10 @@ function createWindow() {
   });
   win.setAlwaysOnTop(true, 'screen-saver');
   win.loadFile(path.join(__dirname, 'index.html'));
+
+  // 默认整体鼠标穿透：透明窗口矩形会挡住下方应用的点击，只有光标落在兔兔
+  // 身上（渲染进程按像素 alpha 判定）时才临时恢复接收事件
+  win.setIgnoreMouseEvents(true);
 
   // 调试：加载完成后截取窗口内容
   if (process.env.PET_DEBUG === '1') {
@@ -74,23 +85,36 @@ function createWindow() {
   win.on('show', refreshTrayMenu);
   win.on('hide', refreshTrayMenu);
 
-  // 记住窗口位置和大小
+  // 只记住窗口位置（尺寸不持久化，重启回到固定尺寸）
   const savePos = () => {
     if (!win) return;
     const b = win.getBounds();
-    cfg.x = b.x; cfg.y = b.y; cfg.width = b.width; cfg.height = b.height;
+    cfg.x = b.x; cfg.y = b.y;
     saveConfig(cfg);
   };
   win.on('moved', savePos);
-  win.on('resized', savePos);
+}
+
+// ===== 尺寸预设（按物理像素语义）=====
+// BrowserWindow 的宽高单位是 DIP，高缩放屏（150%/200%）上 400 DIP 会显示成
+// 600/800 物理像素，看起来比预期大一圈；托盘预设统一换算成当前屏幕的 DIP
+const SIZE_PRESETS = { small: 300, mid: 400, large: 500 };
+
+function currentScale() {
+  // 以窗口当前所在屏幕的缩放为准（多显示器缩放不同也能正确换算）
+  const d = screen.getDisplayMatching(win.getBounds());
+  return d.scaleFactor || 1;
+}
+
+function applySize(physical) {
+  const dip = Math.round(physical / currentScale());
+  setSize(dip, dip);
 }
 
 function setSize(w, h) {
   if (!win) return;
   const b = win.getBounds();
   win.setBounds({ x: b.x, y: b.y, width: w, height: h });
-  cfg.width = w; cfg.height = h;
-  saveConfig(cfg);
   win.webContents.send('size-changed', w, h);
 }
 
@@ -100,8 +124,9 @@ function buildTrayMenu() {
   return Menu.buildFromTemplate([
     { label: visible ? '隐藏兔兔' : '显示兔兔', click: () => togglePet() },
     { type: 'separator' },
-    { label: '尺寸: 小 (300)', click: () => setSize(300, 300) },
-    { label: '尺寸: 大 (400)', click: () => setSize(400, 400) },
+    { label: '尺寸: 小 (300)', click: () => applySize(SIZE_PRESETS.small) },
+    { label: '尺寸: 中 (400)', click: () => applySize(SIZE_PRESETS.mid) },
+    { label: '尺寸: 大 (500)', click: () => applySize(SIZE_PRESETS.large) },
     { type: 'separator' },
     { label: '主动冒泡', type: 'checkbox', checked: cfg.autoBubble !== false, click: () => toggleAutoBubble() },
     { type: 'separator' },
@@ -159,6 +184,22 @@ app.whenReady().then(() => {
 
   ipcMain.on('set-size', (e, w, h) => setSize(w, h));
   ipcMain.on('quit-app', () => { app.isQuitting = true; app.quit(); });
+  // 渲染进程根据命中检测结果切换穿透状态
+  ipcMain.on('set-click-through', (e, ignore) => {
+    if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!!ignore);
+  });
+
+  // 光标轮询（50ms）：穿透状态下页面收不到 mousemove（forward 仅 Windows 可靠），
+  // 主进程统一轮询光标位置发给渲染进程做命中检测，三平台行为一致
+  setInterval(() => {
+    if (!win || win.isDestroyed() || !win.isVisible()) return;
+    const p = screen.getCursorScreenPoint();
+    const b = win.getContentBounds();
+    const inside = p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height;
+    if (inside) win.webContents.send('cursor-position', p.x - b.x, p.y - b.y);
+    else win.webContents.send('cursor-outside');
+  }, 50);
+
   ipcMain.on('move-window-by', (e, dx, dy) => {
     if (!win) return;
     const b = win.getBounds();

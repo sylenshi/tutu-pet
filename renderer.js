@@ -57,9 +57,71 @@ function showBubble(item, duration = 3500) {
 }
 
 // ===== 帧切换 =====
+let currentFrame = 'idle'; // 当前实际显示的形态名（含拖拽/隐藏款等临时形态）
 function setFrame(name) {
-  img.src = FRAMES[name] || FRAMES.idle;
+  currentFrame = FRAMES[name] ? name : 'idle';
+  img.src = FRAMES[currentFrame];
 }
+
+// ===== 鼠标穿透 + 像素级命中检测 =====
+// 窗口矩形默认整体鼠标穿透，避免透明区域挡住下方应用；
+// 把当前形态立绘绘制到离屏 canvas 缓存 alpha 通道，只有光标落在
+// 不透明像素（兔兔"身上"）时才恢复接收事件，空白处保持穿透
+let clickThrough = true;
+
+function setClickThrough(v) {
+  v = !!v;
+  if (clickThrough === v) return;
+  clickThrough = v;
+  if (window.petAPI && window.petAPI.setClickThrough) window.petAPI.setClickThrough(v);
+}
+
+// 预加载各形态原图，命中检测时按需提取 alpha 数据并缓存
+const frameImages = {};
+for (const [name, src] of Object.entries(FRAMES)) {
+  const im = new Image();
+  im.src = src;
+  frameImages[name] = im;
+}
+const alphaCache = {};
+function getAlphaData(name) {
+  if (alphaCache[name]) return alphaCache[name];
+  const im = frameImages[name];
+  if (!im || !im.complete || !im.naturalWidth) return null;
+  const c = document.createElement('canvas');
+  c.width = im.naturalWidth;
+  c.height = im.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(im, 0, 0);
+  alphaCache[name] = ctx.getImageData(0, 0, c.width, c.height);
+  return alphaCache[name];
+}
+
+// 窗口内坐标 (x, y) 是否落在兔兔身上
+function isOverPet(x, y) {
+  const r = img.getBoundingClientRect();
+  if (x < r.left || x >= r.right || y < r.top || y >= r.bottom) return false;
+  const d = getAlphaData(currentFrame);
+  if (!d) return false;
+  const nx = Math.floor((x - r.left) * d.width / r.width);
+  const ny = Math.floor((y - r.top) * d.height / r.height);
+  return d.data[(ny * d.width + nx) * 4 + 3] > 10; // 边缘抗锯齿的近似透明像素算空气
+}
+
+function updateHitTest(x, y) {
+  if (isDragging) return; // 拖拽期间保持可交互，松手后由后续事件重新判定
+  setClickThrough(!isOverPet(x, y));
+}
+
+// 主进程轮询光标：穿透状态下页面收不到 mousemove，这条通道三平台都可靠
+if (window.petAPI && window.petAPI.onCursorPosition) {
+  window.petAPI.onCursorPosition((x, y) => updateHitTest(x, y));
+  window.petAPI.onCursorOutside(() => { if (!isDragging) setClickThrough(true); });
+}
+// 非穿透状态下页面自身 mousemove 实时跟随，光标一移到空白处立即恢复穿透
+window.addEventListener('mousemove', (e) => updateHitTest(e.clientX, e.clientY));
+// 光标离开窗口时兜底恢复穿透
+document.documentElement.addEventListener('mouseleave', () => { if (!isDragging) setClickThrough(true); });
 
 // ===== 弹跳动画（不改变形态）=====
 function bounce(dur, cb) {
@@ -138,6 +200,7 @@ img.addEventListener('mousedown', (e) => {
     const dy = me.screenY - startY;
     if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       isDragging = true;
+      setClickThrough(false); // 拖拽全程保持窗口可交互，不受穿透判定影响
       img.classList.remove('anim-idle', 'anim-click', 'anim-secret');
       void img.offsetWidth;
       img.classList.add('anim-drag');
