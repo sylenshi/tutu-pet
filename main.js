@@ -29,6 +29,15 @@ let win = null;
 let tray = null;
 let cfg = loadConfig();
 
+// 把窗口矩形收敛进工作区：保存的位置可能落在已拔掉的副屏、或被拖出屏幕边缘
+// （x=-580 这类），不 clamp 的话窗口整个在屏幕外——托盘在、桌宠却看不见
+function clampIntoWorkArea(x, y, w, h, wa) {
+  return {
+    x: Math.min(Math.max(x, wa.x), wa.x + wa.width - w),
+    y: Math.min(Math.max(y, wa.y), wa.y + wa.height - h)
+  };
+}
+
 function createWindow() {
   const display = screen.getPrimaryDisplay();
   // 保存的位置可能落在缩放比例不同的副屏上（如主屏 100% + 副屏 150%），
@@ -38,11 +47,15 @@ function createWindow() {
   const wa = openDisplay.workArea;
   // 尺寸语义是物理像素，按屏幕缩放换算成 DIP（150% 屏上 400 物理像素 = 267 DIP）
   const startupSize = Math.round(400 / (openDisplay.scaleFactor || 1));
+  // 保存的位置先收敛回该屏工作区，保证窗口至少完整落在可见范围内
+  const startPos = hasPos
+    ? clampIntoWorkArea(cfg.x, cfg.y, startupSize, startupSize, wa)
+    : { x: wa.x + 60, y: Math.max(wa.y, wa.y + wa.height - startupSize - 40) };
   win = new BrowserWindow({
     width: startupSize,
     height: startupSize,
-    x: hasPos ? cfg.x : wa.x + 60,
-    y: hasPos ? cfg.y : Math.max(wa.y, wa.y + wa.height - startupSize - 40),
+    x: startPos.x,
+    y: startPos.y,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -203,7 +216,14 @@ app.whenReady().then(() => {
   ipcMain.on('move-window-by', (e, dx, dy) => {
     if (!win) return;
     const b = win.getBounds();
-    win.setBounds({ x: b.x + dx, y: b.y + dy, width: b.width, height: b.height });
+    const nb = { x: b.x + dx, y: b.y + dy, width: b.width, height: b.height };
+    // 拖动位置收敛进目标点所在屏幕的工作区，防止把兔兔拖出屏幕外（越界位置
+    // 会被持久化，下次启动窗口就整个在屏幕外了）
+    const wa = screen.getDisplayNearestPoint({
+      x: nb.x + nb.width / 2, y: nb.y + nb.height / 2
+    }).workArea;
+    const p = clampIntoWorkArea(nb.x, nb.y, nb.width, nb.height, wa);
+    win.setBounds({ x: p.x, y: p.y, width: nb.width, height: nb.height });
   });
   ipcMain.handle('get-config', () => cfg);
 });
